@@ -17,7 +17,7 @@ TIPS = {
 DISEASES = list(TIPS.keys())
 
 # 🤖 YOUR BOT'S TOKEN FROM BOTFATHER
-TOKEN = "YOUR_TELEGRAM_TOKEN_HERE"  # ← Replace this later
+TOKEN = "YOUR_TELEGRAM_TOKEN_HERE"  # ← You'll replace this later
 
 # 📸 What happens when user sends a photo
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
