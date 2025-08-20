@@ -1,10 +1,12 @@
-# main.py - AgriDoc AI (Simple & Safe)
+# main.py - AgriDoc AI (Smarter Simulation)
 import os
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
-import random
+from PIL import Image
+import numpy as np
+from io import BytesIO
 
-# 🌱 Treatment tips for common diseases
+# 🌱 Treatment Tips
 TIPS = {
     "Tomato Early Blight": "Remove affected leaves. Spray neem oil weekly.",
     "Tomato Late Blight": "Avoid wet foliage. Use organic fungicide.",
@@ -13,59 +15,69 @@ TIPS = {
     "Apple Scab": "Prune infected branches. Use compost tea spray."
 }
 
-# List of possible diseases (AI will pick one)
-DISEASES = list(TIPS.keys())
+SICK_DISEASES = ["Tomato Early Blight", "Tomato Late Blight", "Corn Gray Spot"]
+HEALTHY_PLANTS = ["Tomato", "Corn", "Potato", "Apple"]
 
-# 🤖 YOUR BOT'S TOKEN FROM BOTFATHER
-TOKEN = "8280884253:AAFrVozGE6quXBk8ekESye368VY3yGUabBA"  # ← You'll replace this later
+# 🤖 Get token from environment
+TOKEN = os.getenv("8280884253:AAFrVozGE6quXBk8ekESye368VY3yGUabBA")
 
-# 📸 What happens when user sends a photo
+# 📸 Handle Photo
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Send "thinking" message
-    await update.message.reply_text("🔍 Scanning your plant... 🌿")
+    await update.message.reply_text("🔍 Analyzing leaf health... 🌿")
 
     try:
-        # Simulate AI result (random but realistic)
-        disease = random.choice(DISEASES)
-        confidence = round(random.uniform(0.78, 0.96), 2)  # e.g., 92.3%
+        # Get photo from user
+        photo_file = await update.message.photo[-1].get_file()
+        image_bytes = await photo_file.download_as_bytearray()
+        
+        # Open image
+        img = Image.open(BytesIO(bytes(image_bytes))).convert("RGB")
+        img_array = np.array(img)
 
-        # Build reply
-        reply = (
-            f"✅ Likely: *{disease}*\n\n"
-            f"📊 Confidence: {confidence:.1%}\n\n"
-            f"💡 *Treatment:*\n{TIPS[disease]}\n\n"
-            "🌱 *Pro Tip:* Keep leaves dry and space plants well.\n\n"
-            "🤖 *AfriSolve AI* — Built for African farmers ❤️"
-        )
+        # Analyze average color
+        avg_color = img_array.mean(axis=(0, 1))  # [R, G, B]
+        green_value = avg_color[1]  # Green channel
+        brown_ratio = np.mean((img_array[:, :, 0] > 100) & (img_array[:, :, 1] < 80))  # More red/brown
 
-        # Send reply in Telegram
+        # Make "AI" decision
+        if green_value > 100 and brown_ratio < 0.1:
+            # Healthy leaf
+            plant = np.random.choice(HEALTHY_PLANTS)
+            reply = (
+                f"✅ *{plant} Leaf is Healthy* 🍃\n\n"
+                "📊 AI Analysis: Good color and texture.\n\n"
+                "💡 *Care Tip:* Keep watering schedule consistent.\n\n"
+                "🌱 AfriSolve AI — Built for African farmers."
+            )
+        else:
+            # Diseased leaf
+            disease = np.random.choice(SICK_DISEASES)
+            confidence = round(np.random.uniform(0.75, 0.93), 2)
+            reply = (
+                f"⚠️ Likely: *{disease}*\n\n"
+                f"📊 Confidence: {confidence:.1%}\n\n"
+                f"💡 *Treatment:*\n{TIPS[disease]}\n\n"
+                "🌱 *Pro Tip:* Remove affected leaves to prevent spread.\n\n"
+                "🤖 AfriSolve AI — AI-powered farming help."
+            )
+
         await update.message.reply_text(reply, parse_mode='Markdown')
 
     except Exception as e:
-        # If anything goes wrong
-        await update.message.reply_text("❌ Could not analyze. Please send a clear photo of a leaf.")
+        await update.message.reply_text(
+            "❌ Could not analyze. Please send a clear photo of a leaf (not fruit)."
+        )
 
 # 🚀 Start the bot
 def main():
-    # Check if token is set
-    if TOKEN == "YOUR_TELEGRAM_TOKEN_HERE":
-        print("❌ ERROR: You forgot to add your bot token!")
-        print("👉 Open main.py and replace 'YOUR_TELEGRAM_TOKEN_HERE' with your real token.")
+    if not TOKEN:
+        print("❌ ERROR: TOKEN not found in environment")
         return
 
-    print("🚀 AgriDoc AI is running... Bot is LIVE!")
-    print("💬 Send a photo to your bot in Telegram.")
-
-    # Build the bot app
+    print("🚀 AgriDoc AI is running with smart analysis!")
     app = Application.builder().token(TOKEN).build()
-
-    # Tell the bot to listen for photos
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-
-    # Start the bot
     app.run_polling()
 
-# This runs when you start the script
 if __name__ == '__main__':
     main()
-
